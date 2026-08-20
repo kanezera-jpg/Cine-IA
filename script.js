@@ -7,7 +7,7 @@ const inputApiKey = document.getElementById('apiKey');
 const btnSalvar = document.getElementById('btnSalvar');
 const statusConfig = document.getElementById('statusConfig');
 
-const formChat = document.getElementById('formChat');
+const formChat = document.getElementById('formchat');
 const campoMensagem = document.getElementById('campoMensagem'); 
 const listaMensagens = document.getElementById('mensagens');
 
@@ -35,13 +35,13 @@ let historico = [];
 
 btnSalvar.addEventListener('click', () => {
     //Remove espaçoes desnecessários
-    config.endpoint = inputEndpoint.ariaValueMax.trim();
-    config.deployment = inputDeployment.ariaValueMax.trim();
-    config.apiKey = inputApiKey.ariaValueMax.trim();
+    config.endpoint = inputEndpoint.value.trim();
+    config.deployment = inputDeployment.value.trim();
+    config.apikey = inputApiKey.value.trim();
 
     //Verificar se os três campos foram preenchidos
     if(!config.endpoint || !config.deployment || !config.apikey){
-        statusConfig.textContent - 'Preencha o Ednpoint, o Deployment e a API Key';
+        statusConfig.textContent = 'Preencha o Endpoint, o Deployment e a API Key';
         return;
     }
 
@@ -52,7 +52,7 @@ btnSalvar.addEventListener('click', () => {
         return;
     }
 
-    statusConfig.textContent - 'Configuração salva ✅';
+    statusConfig.textContent ='Configuração salva ✅';
 });
 
 //Passo 2 - Enviar mensagem
@@ -151,4 +151,106 @@ async function perguntaParaAzure() {
         instructions: instrucoesCineIA,
         input: historico
     };
+
+    try{
+    // Faz a requisição para a Azure
+    const resposta = await fetch(url, {
+
+        method:'POST',
+        headers: {
+           'Content-Type':'application/json',
+
+        //Chave de acesso da Azure
+        'api-key': config.apikey
+        },
+        body: JSON.stringify(corpo)
+    });
+
+    //Tratamento de Erro
+    if(!resposta.ok){
+        const erroTexto = await reposta.text();
+        console.error('Erro da Azure: ', erroTexto);
+
+        //Tenta transformar o erro em Json
+        let mensagemErro = erroTexto;
+
+        try{
+            const erroJson = JSON.parse(erroTexto);
+            if(erroTexto.error?.message){
+                mensagemErro = erroJson.error.message;
+            }
+        }catch{
+            //Caso o retorno não seja JSON
+            //Mantém o texto original
+        }
+        
+        return(
+            `Ocorreu um erro(${resposta.status}): ${mensagemErro}`
+        
+        );
+    }
+        //Converte a resposta para JSON
+        const dados = await resposta.json();
+
+        console.log('Resposta completa da Azure', dados);
+
+        //Extrai o texto gerado
+        if(dados.output_text){
+            return dados.output_text;
+        }
+
+   // Fallback
+   // Caso output_text não esteja disponivel, tentamos localizar
+   // o texto dentro da estrutura de output.
+   
+   if(Array.isArray(dados.output)){
+        for(const item of dados.output){
+            if(Array.isArray(item.content)){
+                for(const conteudo of item.content){
+                    if(counteudo.text){
+                        return conteudo.text;
+                    }
+                }
+            }
+        }
+   }
+
+   console.error(
+        'Não foi possível localizar o texto da resposta',
+        dados
+    );
+    return 'A Azure respondeu, mas não foi possível encontrar o texto da resposta';
+    }catch(erro){
+        //Erro de conexão
+        console.error('Erro de conexão com a Azure')
+        return(
+            'Não foi possivel conectar à Azure.'+
+            'Verifique o endpoint, a API Key, o CORS e a sua conexão.'
+        );
+    }
+}
+
+//Função Auxiliar - Adicionar mensagem na tela
+function adicionarMensagemNaTela(remetente,texto){
+
+    const div = document.createElement('div');
+
+    //Define a classe CSS da mensagem
+    div.classList.add(
+        'msg',
+        remetente === 'user'?'user':'bot'
+    );
+
+    //Insere o texto
+    div.textContent = texto;
+
+    //Adiciona a mensagem ao chat
+    listaMensagens.appendeChild(div);
+
+    //Rola automaticamente para a ultima mensagem
+    listaMensagens.scrollTop = listaMensagens.scrollHeight;
+
+    return div;
+
+
 }
