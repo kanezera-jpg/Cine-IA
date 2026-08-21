@@ -7,8 +7,8 @@ const inputApiKey = document.getElementById('apiKey');
 const btnSalvar = document.getElementById('btnSalvar');
 const statusConfig = document.getElementById('statusConfig');
 
-const formChat = document.getElementById('formchat');
-const campoMensagem = document.getElementById('campoMensagem'); 
+const formChat = document.getElementById('formChat');
+const campoMensagem = document.getElementById('campoMensagem');
 const listaMensagens = document.getElementById('mensagens');
 
 //Configuração da API
@@ -16,54 +16,55 @@ const listaMensagens = document.getElementById('mensagens');
 let config = {
     endpoint:'',
     deployment:'',
-    apikey:''
+    apiKey: ''
 };
 
 // Instruções do CineIA
 
-const instrucoesCineIA = 'Você é o CineIA, um assistente especializado em recomendar ' +
-'filmes e séries. Seja breve simpático e objetivo ' +
-'Sempre sugira pelo menos um titulo concreto.'+
-'Explique em uma frase por que a recomendação combina com o pedido.'
-'Considere gênero, clima, estilo e referências mencionadas pelo usuário.'; 
+const instrucoesCineIA = 
+'Você é o CineIA, um assistente especializado em recomendar ' + 
+'filmes e séries. Seja breve simpático e objetivo. ' +
+'Sempre sugira pelo menos um título concreto.'+
+'Explique em uma frase por que a recomendação combina com o pedido.'+
+'Considere gênero, clima, estilo e referências mencionadas pelo usuário.';
 
-// Histórico de conversa
+//Histórico de conversa
 
 let historico = [];
 
 //Passo 1 - Salvar Configuração
 
 btnSalvar.addEventListener('click', () => {
-    //Remove espaçoes desnecessários
+    //Remove espaços desnecessários
     config.endpoint = inputEndpoint.value.trim();
     config.deployment = inputDeployment.value.trim();
-    config.apikey = inputApiKey.value.trim();
+    config.apiKey = inputApiKey.value.trim();
 
     //Verificar se os três campos foram preenchidos
-    if(!config.endpoint || !config.deployment || !config.apikey){
-        statusConfig.textContent = 'Preencha o Endpoint, o Deployment e a API Key';
+    if (!config.endpoint || !config.deployment || !config.apiKey){
+        statusConfig.textContent = 'Preencha o Endpoint, o Deployment e a API Key.';
         return;
     }
 
     //Verifica se o endpoint possui o formato esperado
     if(!config.endpoint.includes('/openai/v1/responses')){
-        statusConfig.textContent = 'O endpoint deve terminar com /openai/v1/responses.'
+        statusConfig.textContent = 'O endpoint deve terminar com /openai/v1/responses.';
 
         return;
     }
 
-    statusConfig.textContent ='Configuração salva ✅';
+    statusConfig.textContent = 'Configuração salva ✅';
 });
 
 //Passo 2 - Enviar mensagem
 
 formChat.addEventListener('submit', async(evento) =>{
-
+   
     //Impede que a página seja recarregada
     evento.preventDefault();
 
-    //Pega o texto digitado pelo usuário
-    const texto = campoMensagem.value.trim()
+    //Pega o texto digitado pelo usuario
+    const texto = campoMensagem.value.trim();
 
     //Não envia mensagens vazias
     if(!texto){
@@ -71,7 +72,7 @@ formChat.addEventListener('submit', async(evento) =>{
     }
 
     //Verifica se a configuração foi realizada
-    if(!config.endpoint || !config.deployment || !config.apiKey){
+    if (!config.endpoint || !config.deployment || !config.apiKey){
         adicionarMensagemNaTela(
             'bot',
             'Configure o Endpoint, o Deployment e a API Key antes de conversar.'
@@ -84,14 +85,14 @@ formChat.addEventListener('submit', async(evento) =>{
 
     //Limpar o campo texto
     campoMensagem.value = '';
-
+    
     //Adicionar a mensagem ao histórico
     historico.push({
         role:'user',
         content:texto
-    })
+    });
 
-    //Mostra mensagem temporaria enquanto aguarda a azure
+    //Mostra mensagem temporária enquanto aguarda a Azure
     const carregando = adicionarMensagemNaTela(
         'bot',
         'Pensando...'
@@ -113,7 +114,7 @@ formChat.addEventListener('submit', async(evento) =>{
 
         //Só adiciona ao histórico se recebemos uma resposta válida
         if(resposta && !resposta.startsWith('Ocorreu um erro')){
-
+         
             historico.push({
                 role: 'assistant',
                 content: resposta
@@ -121,9 +122,9 @@ formChat.addEventListener('submit', async(evento) =>{
         }
     }catch(erro){
         console.error('Erro no chat', erro);
-        carregando.textContent = 'Não foi possível obter uma resposta da Azure'
+        carregando.textContent = 'Não foi possível obter uma resposta da Azure.';
     }finally{
-        //Reativa o botão
+        //Reativa o botão 
         if(botaoEnviar){
             botaoEnviar.disabled = false;
         }
@@ -132,11 +133,10 @@ formChat.addEventListener('submit', async(evento) =>{
     }
 });
 
-
 //Função Principal - Azure OpenAI responses API
 async function perguntaParaAzure() {
-    //Verifica a configuração
-    if(!config.endpoint || !config.deployment || !config.apiKey){
+    //Verifica a configuração 
+    if (!config.endpoint || !config.deployment || !config.apiKey){
         return(
             'Configure o Endpoint, o Deployment e a API Key antes de conversar.'
         );
@@ -144,33 +144,34 @@ async function perguntaParaAzure() {
 
     //Endpoint
     const url = config.endpoint.replace(/\/+$/, '');
+
     //Corpo da Requisição
 
     const corpo = {
         model: config.deployment,
         instructions: instrucoesCineIA,
-        input: historico
+        input:historico
     };
 
     try{
     // Faz a requisição para a Azure
     const resposta = await fetch(url, {
-
+        
         method:'POST',
-        headers: {
-           'Content-Type':'application/json',
+        headers:{
+            'Content-Type':'application/json',
 
-        //Chave de acesso da Azure
-        'api-key': config.apikey
+            //Chave de acesso da Azure
+            'api-key': config.apiKey
         },
         body: JSON.stringify(corpo)
     });
 
     //Tratamento de Erro
     if(!resposta.ok){
-        const erroTexto = await reposta.text();
+        const erroTexto = await resposta.text();
         console.error('Erro da Azure: ', erroTexto);
-
+        
         //Tenta transformar o erro em Json
         let mensagemErro = erroTexto;
 
@@ -181,61 +182,62 @@ async function perguntaParaAzure() {
             }
         }catch{
             //Caso o retorno não seja JSON
-            //Mantém o texto original
+            //Mantém o texto original.
         }
-        
+
         return(
             `Ocorreu um erro(${resposta.status}): ${mensagemErro}`
-        
         );
     }
         //Converte a resposta para JSON
         const dados = await resposta.json();
 
-        console.log('Resposta completa da Azure', dados);
+        console.log('Resposta completa da Azure:', dados);
 
         //Extrai o texto gerado
+        // A Responses API disponibiliza o texto em:
+        // dados.output_text
         if(dados.output_text){
             return dados.output_text;
         }
 
-   // Fallback
-   // Caso output_text não esteja disponivel, tentamos localizar
-   // o texto dentro da estrutura de output.
-   
-   if(Array.isArray(dados.output)){
+    //Fallback
+    // Caso output_text não esteja disponível, tentamos localizar
+    // o texto dentro da estrutura de output.
+
+    if(Array.isArray(dados.output)){
         for(const item of dados.output){
             if(Array.isArray(item.content)){
                 for(const conteudo of item.content){
-                    if(counteudo.text){
+                    if(conteudo.text){
                         return conteudo.text;
                     }
                 }
             }
         }
-   }
+    }
 
-   console.error(
-        'Não foi possível localizar o texto da resposta',
+    console.error(
+        'Não foi possível localizar o texto da resposta:',
         dados
     );
-    return 'A Azure respondeu, mas não foi possível encontrar o texto da resposta';
+    return 'A Azure respondeu, mas não foi possível encontrar o texto da resposta.';
     }catch(erro){
         //Erro de conexão
-        console.error('Erro de conexão com a Azure')
+        console.error('Erro de conexão com a Azure',erro);
         return(
-            'Não foi possivel conectar à Azure.'+
+            'Não foi possível conectar à Azure.'+
             'Verifique o endpoint, a API Key, o CORS e a sua conexão.'
         );
     }
 }
 
 //Função Auxiliar - Adicionar mensagem na tela
-function adicionarMensagemNaTela(remetente,texto){
-
+function adicionarMensagemNaTela(remetente, texto){
+    
     const div = document.createElement('div');
 
-    //Define a classe CSS da mensagem
+    //Define a classe CSS da mensagem 
     div.classList.add(
         'msg',
         remetente === 'user'?'user':'bot'
@@ -245,9 +247,9 @@ function adicionarMensagemNaTela(remetente,texto){
     div.textContent = texto;
 
     //Adiciona a mensagem ao chat
-    listaMensagens.appendeChild(div);
+    listaMensagens.appendChild(div);
 
-    //Rola automaticamente para a ultima mensagem
+    //Rola automaticamente para a última mensagem
     listaMensagens.scrollTop = listaMensagens.scrollHeight;
 
     return div;
